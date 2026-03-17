@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Shadcn/UI CSS Variables — dark-mode Spade theme ───────────────────────── */
+@layer base {
+  :root {
+    --background:        222 47% 5%;
+    --foreground:        180 20% 95%;
+    --card:              222 40% 8%;
+    --card-foreground:   180 20% 92%;
+    --popover:           222 40% 7%;
+    --popover-foreground:180 20% 92%;
+    --primary:           174 72% 40%;    /* spade teal-500 */
+    --primary-foreground:180 20% 97%;
+    --secondary:         222 30% 14%;
+    --secondary-foreground:180 15% 80%;
+    --muted:             222 30% 12%;
+    --muted-foreground:  215 15% 55%;
+    --accent:            36 91% 55%;     /* gold accent */
+    --accent-foreground: 222 47% 5%;
+    --destructive:       0 72% 51%;
+    --destructive-foreground:0 0% 98%;
+    --border:            222 25% 16%;
+    --input:             222 25% 14%;
+    --ring:              174 72% 40%;
+    --radius:            0.6rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* ── Custom scrollbar ───────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb  { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary)); }
+
+/* ── Shimmer skeleton ───────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--secondary)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer rounded-md;
+}
+
+/* ── Streaming text cursor ──────────────────────────────────────────────────── */
+.stream-cursor::after {
+  content: "▍";
+  @apply text-primary animate-pulse ml-0.5;
+}
+
+/* ── Glassmorphism card ─────────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(20, 184, 166, 0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(20, 184, 166, 0.12);
+}

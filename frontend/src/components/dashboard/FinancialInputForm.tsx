@@ -36,7 +36,7 @@ interface FieldConfig {
 const FIELDS: FieldConfig[] = [
   {
     name: "fixed_costs",
-    label: "Fixed Costs (period)",
+    label: "Fixed Costs (Rent, Salaries, etc.)",
     placeholder: "50000",
     icon: DollarSign,
     tooltip: "Total fixed overhead: rent, salaries, subscriptions, etc.",
@@ -45,7 +45,7 @@ const FIELDS: FieldConfig[] = [
   },
   {
     name: "variable_cost",
-    label: "Variable Cost (per unit)",
+    label: "Cost to Make One Item",
     placeholder: "125",
     icon: Package,
     tooltip: "Cost per unit sold: materials, packaging, shipping.",
@@ -54,25 +54,25 @@ const FIELDS: FieldConfig[] = [
   },
   {
     name: "estimated_volume",
-    label: "Estimated Volume (units)",
+    label: "Expected Sales Volume",
     placeholder: "400",
     icon: TrendingUp,
-    tooltip: "Units you expect to sell in the same period as your fixed costs.",
+    tooltip: "How many items you expect to sell in this time frame.",
     required: true,
     prefix: "#",
   },
   {
     name: "target_profit",
-    label: "Target Profit",
+    label: "Desired Profit Goal",
     placeholder: "30000",
     icon: Target,
-    tooltip: "The net profit you want to make in the period.",
+    tooltip: "The total net profit you want to make in this period.",
     required: true,
     prefix: "₹",
   },
   {
     name: "current_price",
-    label: "Current Price (optional)",
+    label: "Current Selling Price (optional)",
     placeholder: "299",
     icon: Calculator,
     tooltip: "What you currently charge — helps the AI spot your gap.",
@@ -199,7 +199,7 @@ export function FinancialInputForm({ onSubmit, loading = false, className }: Fin
                 </span>
               </div>
               <p className="mt-1 text-[10px] text-muted-foreground">
-                = (₹{fixedCosts.toFixed(0)} + ₹{targetProfit.toFixed(0)}) ÷ {volume} units + ₹{varCost.toFixed(2)} var. cost
+                = (₹{fixedCosts.toFixed(0)} + ₹{targetProfit.toFixed(0)}) ÷ {volume} items + ₹{varCost.toFixed(2)} cost per item
               </p>
             </div>
           )}

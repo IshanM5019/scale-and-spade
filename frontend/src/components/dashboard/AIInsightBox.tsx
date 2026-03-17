@@ -104,25 +104,25 @@ function FormulaBreakdown({ data }: { data: AdvisorResponse["formula_breakdown"]
       </p>
       <div className="font-mono text-xs space-y-1 text-muted-foreground">
         <div className="flex items-center justify-between">
-          <span>Fixed Costs + Target Profit</span>
+          <span>Fixed Costs + Desired Profit</span>
           <span className="text-foreground">
             ₹{(data.fixed_costs + data.target_profit).toLocaleString("en-IN")}
           </span>
         </div>
         <div className="flex items-center justify-between border-t border-border/40 pt-1">
-          <span>÷ Estimated Volume</span>
-          <span className="text-foreground">{data.estimated_volume.toLocaleString("en-IN")} units</span>
+          <span>÷ Expected Sales Volume</span>
+          <span className="text-foreground">{data.estimated_volume.toLocaleString("en-IN")} items</span>
         </div>
         <div className="flex items-center justify-between border-t border-border/40 pt-1">
-          <span>= Contrib. needed / unit</span>
+          <span>= Profit Needed per Item</span>
           <span className="text-primary font-bold">₹{data.contribution_needed_per_unit.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span>+ Variable Cost</span>
+          <span>+ Cost to Make One Item</span>
           <span className="text-foreground">₹{data.variable_cost.toFixed(2)}</span>
         </div>
         <div className="flex items-center justify-between border-t border-primary/30 pt-1.5">
-          <span className="font-semibold text-foreground">= Suggested Price</span>
+          <span className="font-semibold text-foreground">= Suggested Selling Price</span>
           <span className="text-lg font-bold text-primary">₹{data.suggested_price.toFixed(2)}</span>
         </div>
       </div>
@@ -289,7 +289,7 @@ export function AIInsightBox({
             <p className="font-mono text-xl font-bold text-gold-400">
               +₹{data.markup_over_variable_cost.toFixed(2)}
             </p>
-            <p className="text-[10px] text-muted-foreground">Markup / Unit</p>
+            <p className="text-[10px] text-muted-foreground">Profit / Item</p>
           </div>
           <div className="col-span-2 rounded-lg border border-border/40 bg-background/30 p-3 text-center sm:col-span-1">
             <VerdictIcon className={cn("mx-auto mb-1 h-4 w-4", verdictCfg!.color)} />

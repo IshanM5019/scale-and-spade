@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.api.v1 import auth, competitor, profit, scraper, advisor, analyze
+from app.api.v1 import auth, competitor, profit, scraper, advisor, analyze, discount
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Logging
@@ -64,6 +64,13 @@ app = FastAPI(
                 "and sends everything to Gemini Flash for a REALISTIC / BORDERLINE / DELUSIONAL verdict."
             ),
         },
+        {
+            "name": "Discount Viability",
+            "description": (
+                "Calculates break-even point and required sales volume for 10%, 20%, and 30% "
+                "discounts. Flags HIGH RISK strategies (required volume > 2× BEP) via Gemini."
+            ),
+        },
     ],
 )
 
@@ -92,6 +99,9 @@ app.include_router(advisor.router,    prefix="/api/v1/advisor",      tags=["AI A
 
 # ★ The new unified analyze router
 app.include_router(analyze.router,    prefix="/api/v1/analyze",      tags=["Analyze"])
+
+# Discount viability — break-even + risk classification + Gemini flag
+app.include_router(discount.router,   prefix="/api/v1/discount",     tags=["Discount Viability"])
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Google Fonts ───────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 /* ── Shadcn/UI CSS Variables — dark-mode Spade theme ───────────────────────── */
 @layer base {
   :root {
@@ -11,20 +14,20 @@
     --card-foreground:   180 20% 92%;
     --popover:           222 40% 7%;
     --popover-foreground:180 20% 92%;
-    --primary:           174 72% 40%;    /* spade teal-500 */
+    --primary:           160 84% 39%;    /* emerald-500 */
     --primary-foreground:180 20% 97%;
     --secondary:         222 30% 14%;
     --secondary-foreground:180 15% 80%;
     --muted:             222 30% 12%;
     --muted-foreground:  215 15% 55%;
-    --accent:            36 91% 55%;     /* gold accent */
+    --accent:            160 84% 39%;
     --accent-foreground: 222 47% 5%;
     --destructive:       0 72% 51%;
     --destructive-foreground:0 0% 98%;
     --border:            222 25% 16%;
     --input:             222 25% 14%;
-    --ring:              174 72% 40%;
-    --radius:            0.6rem;
+    --ring:              160 84% 39%;
+    --radius:            0.75rem;
   }
 }
 
@@ -33,16 +36,41 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 /* ── Custom scrollbar ───────────────────────────────────────────────────────── */
-::-webkit-scrollbar        { width: 6px; height: 6px; }
-::-webkit-scrollbar-track  { background: hsl(var(--background)); }
-::-webkit-scrollbar-thumb  { background: hsl(var(--border)); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary)); }
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: hsl(222 47% 5%); }
+::-webkit-scrollbar-thumb  { background: hsl(222 25% 18%); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(160 84% 39% / 0.6); }
+
+/* ── Glassmorphism card ─────────────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(16, 185, 129, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+/* ── Glow effects ───────────────────────────────────────────────────────────── */
+.glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), 0 0 60px rgba(16, 185, 129, 0.08);
+}
+
+.glow-emerald-sm {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+/* ── Animated gradient background ──────────────────────────────────────────── */
+.animated-bg {
+  background: radial-gradient(ellipse at 20% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 80%, rgba(71, 85, 105, 0.08) 0%, transparent 60%),
+              hsl(222 47% 5%);
+}
 
 /* ── Shimmer skeleton ───────────────────────────────────────────────────────── */
 .skeleton {
@@ -53,18 +81,53 @@
     hsl(var(--muted)) 100%
   );
   background-size: 200% 100%;
-  @apply animate-shimmer rounded-md;
+  animation: shimmer 1.8s linear infinite;
+  @apply rounded-md;
 }
 
 /* ── Streaming text cursor ──────────────────────────────────────────────────── */
 .stream-cursor::after {
   content: "▍";
-  @apply text-primary animate-pulse ml-0.5;
+  @apply text-emerald-400 animate-pulse ml-0.5;
 }
 
-/* ── Glassmorphism card ─────────────────────────────────────────────────────── */
-.glass-card {
-  background: rgba(20, 184, 166, 0.04);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(20, 184, 166, 0.12);
+/* ── Gradient text ──────────────────────────────────────────────────────────── */
+.gradient-text {
+  @apply text-transparent bg-clip-text;
+  background-image: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
+}
+
+/* ── Nav link transitions ───────────────────────────────────────────────────── */
+.nav-link {
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 font-medium transition-all duration-200 border border-transparent;
+}
+
+.nav-link:hover {
+  @apply bg-slate-800/70 text-white border-slate-700/50;
+}
+
+.nav-link.active {
+  @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/20;
+  box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+/* ── Input focus ring ────────────────────────────────────────────────────────── */
+.input-field {
+  @apply w-full rounded-xl border border-slate-700/50 bg-slate-950/60 py-3 px-4 text-white placeholder:text-slate-600 transition-all duration-200;
+  @apply focus:border-emerald-500/60 focus:bg-slate-900/80 focus:outline-none focus:ring-2 focus:ring-emerald-500/20;
+}
+
+/* ── Button variants ─────────────────────────────────────────────────────────── */
+.btn-primary {
+  @apply w-full rounded-xl bg-emerald-500 py-3 px-6 font-semibold text-slate-950 transition-all duration-200 active:scale-[0.98];
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.btn-primary:hover {
+  @apply bg-emerald-400;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.4), 0 4px 16px rgba(16, 185, 129, 0.3);
+}
+
+.btn-outline {
+  @apply w-full rounded-xl border border-slate-700 bg-transparent py-3 px-6 font-semibold text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all duration-200 active:scale-[0.98];
 }

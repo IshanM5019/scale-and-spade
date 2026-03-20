@@ -1,328 +1,290 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from "react";
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { StatCard, StatsGrid } from "@/components/dashboard/StatsGrid";
-import { CompetitorFeed } from "@/components/dashboard/CompetitorFeed";
-import { FinancialInputForm, type FinancialFormData } from "@/components/dashboard/FinancialInputForm";
-import { AIInsightBox, type AdvisorResponse } from "@/components/dashboard/AIInsightBox";
-import { useCompetitors, useCompetitorSummary } from "@/hooks/useCompetitors";
-import { useProfitSummary } from "@/hooks/useProfit";
-import apiClient from "@/lib/apiClient";
-import { formatCurrency } from "@/lib/utils";
+import { useState } from 'react';
 import {
-  Users,
-  TrendingUp,
-  Percent,
-  IndianRupee,
-  RefreshCw,
-  ChevronDown,
-  Layers,
-  BarChart2,
-  Info,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+  Search, TrendingDown, TrendingUp, Filter, Sparkles,
+  Globe, ExternalLink, MoreHorizontal, RefreshCw, ArrowUpRight,
+  Zap, Eye
+} from 'lucide-react';
 
-// ── Section header ─────────────────────────────────────────────────────────
+const COMPETITOR_DATA = [
+  {
+    name: 'Apex Solutions',
+    niche: 'SaaS',
+    price: '$4,800',
+    change: '+8%',
+    trend: 'up',
+    status: 'Active',
+    threat: 'High',
+    website: 'apex.io',
+  },
+  {
+    name: 'NovaTech Corp',
+    niche: 'SaaS',
+    price: '$3,950',
+    change: '-3%',
+    trend: 'down',
+    status: 'Active',
+    threat: 'Medium',
+    website: 'novatech.com',
+  },
+  {
+    name: 'Stratify Ltd',
+    niche: 'Consulting',
+    price: '$5,200',
+    change: '+12%',
+    trend: 'up',
+    status: 'Active',
+    threat: 'High',
+    website: 'stratify.co',
+  },
+  {
+    name: 'BluePath Agency',
+    niche: 'Marketing',
+    price: '$2,100',
+    change: '-1%',
+    trend: 'neutral',
+    status: 'Inactive',
+    threat: 'Low',
+    website: 'bluepath.agency',
+  },
+];
 
-function SectionHeader({
-  icon: Icon,
-  title,
-  description,
-  badge,
-  action,
-}: {
-  icon: React.ElementType;
-  title: string;
-  description?: string;
-  badge?: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
-          <Icon className="h-4 w-4 text-primary" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground">{title}</h2>
-            {badge}
-          </div>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function Divider() {
-  return <div className="border-t border-border/40" />;
-}
-
-// ── Demo mode banner ──────────────────────────────────────────────────────
-
-function DemoBanner() {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-amber-500/25 bg-amber-500/8 px-4 py-3 mb-8 animate-fade-in">
-      <Info className="h-4 w-4 shrink-0 text-amber-400" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-amber-300">
-          Demo Mode — showing sample data
-        </p>
-        <p className="text-[11px] text-amber-400/70 mt-0.5">
-          Sign in to see your live competitors, profit entries, and run personalised AI analysis.
-        </p>
-      </div>
-      <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
-        Demo
-      </span>
-    </div>
-  );
-}
-
-// ── Page ───────────────────────────────────────────────────────────────────
+const KPI_CARDS = [
+  {
+    label: 'Total Tracked',
+    value: '12',
+    chip: '+2 this week',
+    chipColor: 'emerald',
+    icon: Eye,
+    accent: 'from-emerald-500 to-teal-400',
+  },
+  {
+    label: 'Avg Market Price',
+    value: '$4,250',
+    chip: '−5% vs you',
+    chipColor: 'red',
+    icon: TrendingDown,
+    accent: 'from-slate-600 to-slate-500',
+  },
+  {
+    label: 'AI Opportunities',
+    value: '3',
+    chip: 'Niches detected',
+    chipColor: 'emerald',
+    icon: Zap,
+    accent: 'from-emerald-500 to-green-400',
+    gradient: true,
+  },
+];
 
 export default function DashboardPage() {
-  const {
-    competitors,
-    isLoading: compLoading,
-    isError: compError,
-    unauthenticated: compUnauth,
-  } = useCompetitors();
+  const [search, setSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { summary: compSummary, isLoading: summaryLoading } = useCompetitorSummary();
-  const { summary: profitSummary, isLoading: profitLoading } = useProfitSummary();
-
-  const [advisorData, setAdvisorData] = useState<AdvisorResponse | null>(null);
-  const [advisorLoading, setAdvisorLoading] = useState(false);
-  const [advisorError, setAdvisorError] = useState<string | null>(null);
-  const [lastForm, setLastForm] = useState<FinancialFormData | null>(null);
-
-  // ── Derived stats ─────────────────────────────────────────────────────────
-  const latestProfit =
-    profitSummary && profitSummary.length > 0
-      ? profitSummary[profitSummary.length - 1]
-      : null;
-
-  const prevProfit =
-    profitSummary && profitSummary.length > 1
-      ? profitSummary[profitSummary.length - 2]
-      : null;
-
-  const profitDelta =
-    latestProfit && prevProfit && prevProfit.net_profit !== 0
-      ? ((latestProfit.net_profit - prevProfit.net_profit) / Math.abs(prevProfit.net_profit)) * 100
-      : undefined;
-
-  const marketAvgDiscount = compSummary
-    ? Math.round((1 - 1 / (1 + (compSummary.average_rating ?? 3) / 10)) * 100)
-    : null;
-
-  const yourDiscount = advisorData
-    ? Math.round((advisorData.markup_over_variable_cost / (advisorData.suggested_price || 1)) * 100)
-    : null;
-
-  // ── Advisor call ─────────────────────────────────────────────────────────
-
-  const runAdvisor = useCallback(
-    async (data: FinancialFormData) => {
-      setLastForm(data);
-      setAdvisorLoading(true);
-      setAdvisorError(null);
-      setAdvisorData(null);
-
-      try {
-        const competitorPayload = competitors.map((c) => ({
-          name: c.name,
-          website: c.website ?? null,
-          category: c.category ?? null,
-          region: c.region ?? null,
-          rating: c.rating ?? null,
-          best_promo: c.notes ?? null,
-          promos: c.notes ? [c.notes] : [],
-        }));
-
-        const response = await apiClient.post("/api/v1/advisor/analyse", {
-          ...data,
-          competitors: competitorPayload,
-        });
-
-        setAdvisorData(response.data as AdvisorResponse);
-      } catch (err: unknown) {
-        const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
-        const status = axiosErr?.response?.status;
-
-        if (status === 401 || status === 403) {
-          setAdvisorError(
-            "Sign in required to run AI analysis. The Gemini advisor needs an authenticated session."
-          );
-        } else {
-          setAdvisorError(
-            axiosErr?.response?.data?.detail ??
-            "Failed to get AI advice. Make sure the backend server is running."
-          );
-        }
-      } finally {
-        setAdvisorLoading(false);
-      }
-    },
-    [competitors]
+  const filtered = COMPETITOR_DATA.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.niche.toLowerCase().includes(search.toLowerCase())
   );
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1500);
+  };
 
   return (
-    <DashboardShell>
-      {/* Demo banner when unauthenticated */}
-      {compUnauth && <DemoBanner />}
+    <div className="animate-in fade-in duration-500 space-y-8">
 
-      {/* Page title */}
-      <div className="mb-8 animate-fade-in">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground/60 mb-2">
-          <span>Dashboard</span>
-          <ChevronDown className="h-3 w-3 -rotate-90" />
-          <span>Overview</span>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-2.5">
+            Market Insights
+            <Sparkles className="h-5 w-5 text-emerald-400" />
+          </h1>
+          <p className="text-slate-400 mt-1.5 text-sm">
+            Real-time competitor analysis and AI-powered pricing strategy.
+          </p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Business Intelligence{" "}
-          <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-            Overview
-          </span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Real-time competitor insights, pricing analysis, and AI-powered profit advice — all in ₹ INR.
-        </p>
-      </div>
 
-      <div className="space-y-8">
-
-        {/* ── 1. Stats Grid ───────────────────────────────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={BarChart2}
-            title="Market Overview"
-            description="Key metrics at a glance"
-          />
-          <div className="mt-4">
-            <StatsGrid>
-              <StatCard
-                title="Market Avg. Discount"
-                value={marketAvgDiscount !== null ? `${marketAvgDiscount}%` : "—"}
-                subtitle="Based on competitor ratings"
-                icon={Percent}
-                loading={summaryLoading}
-              />
-
-              <StatCard
-                title="Your Markup"
-                value={yourDiscount !== null ? `${yourDiscount}%` : "Run analysis"}
-                subtitle={advisorData ? "vs. variable cost" : "Submit the form below"}
-                icon={TrendingUp}
-                highlight={!!advisorData}
-                loading={advisorLoading}
-                delta={
-                  advisorData && marketAvgDiscount !== null
-                    ? yourDiscount! - marketAvgDiscount
-                    : undefined
-                }
-                deltaLabel="vs market"
-              />
-
-              <StatCard
-                title="Competitors Tracked"
-                value={compSummary?.total_competitors ?? "—"}
-                subtitle={
-                  compSummary?.top_competitor
-                    ? `Top: ${compSummary.top_competitor}`
-                    : undefined
-                }
-                icon={Users}
-                loading={summaryLoading}
-              />
-
-              <StatCard
-                title="Net Profit (Latest)"
-                value={latestProfit ? formatCurrency(latestProfit.net_profit) : "—"}
-                subtitle={latestProfit ? `Period: ${latestProfit.period}` : "No entries yet"}
-                icon={IndianRupee}
-                delta={profitDelta}
-                deltaLabel="vs prev. period"
-                loading={profitLoading}
-              />
-            </StatsGrid>
-          </div>
-        </section>
-
-        <Divider />
-
-        {/* ── 2. Competitor Feed ──────────────────────────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={Layers}
-            title="Competitor Intelligence Feed"
-            description="Latest social strategies and promos scraped from competitor pages"
-            badge={
-              compUnauth ? (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400">
-                  Demo data
-                </span>
-              ) : null
-            }
-            action={
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => window.location.reload()}
-                id="refresh-competitors-btn"
-              >
-                <RefreshCw className="h-3 w-3" />
-                Refresh
-              </Button>
-            }
-          />
-          <div className="mt-4">
-            <CompetitorFeed competitors={competitors} loading={compLoading} />
-            {compError && (
-              <p className="mt-3 text-xs text-destructive/80">
-                Network error — make sure the backend is running on port 8000.
-              </p>
-            )}
-          </div>
-        </section>
-
-        <Divider />
-
-        {/* ── 3 & 4. Financial Form + AI Insight ──────────────────────────── */}
-        <section>
-          <SectionHeader
-            icon={TrendingUp}
-            title="Pricing Analysis"
-            description="Enter your financials (in ₹) and let Gemini run the numbers"
-          />
-          <div className="mt-4 grid gap-6 lg:grid-cols-2">
-            <FinancialInputForm onSubmit={runAdvisor} loading={advisorLoading} />
-            <AIInsightBox
-              data={advisorData}
-              loading={advisorLoading}
-              error={advisorError}
-              onRetry={lastForm ? () => runAdvisor(lastForm) : undefined}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search competitors…"
+              className="w-64 rounded-xl border border-slate-800 bg-slate-900/80 py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition-all"
             />
           </div>
-        </section>
-
+          <button className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 px-3.5 py-2.5 text-sm text-slate-400 hover:text-white hover:border-slate-700 transition-all">
+            <Filter className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-3.5 py-2.5 text-sm text-emerald-400 hover:bg-emerald-500/15 transition-all"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:block">Refresh</span>
+          </button>
+        </div>
       </div>
 
-      {/* Footer */}
-      <footer className="mt-16 border-t border-border/30 pt-6 text-center">
-        <p className="text-xs text-muted-foreground/40">
-          Spade &amp; Scale · AI-powered Business Intelligence · Powered by Gemini · Currency: ₹ INR
-        </p>
-      </footer>
-    </DashboardShell>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {KPI_CARDS.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div key={card.label} className="relative rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 overflow-hidden group hover:border-slate-700/80 transition-all duration-300">
+              {/* Accent top bar */}
+              <div className={`absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r ${card.accent} opacity-70`} />
+              {/* Subtle hover glow */}
+              <div className="absolute inset-0 bg-gradient-to-b from-slate-800/0 to-slate-900/0 group-hover:from-slate-800/20 transition-all duration-300 rounded-2xl" />
+
+              <div className="relative flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">{card.label}</p>
+                  <p className={`mt-3 text-4xl font-bold tracking-tight ${card.gradient ? 'gradient-text' : 'text-white'}`}>
+                    {card.value}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-2.5 ${card.chipColor === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className={`mt-4 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border
+                ${card.chipColor === 'emerald'
+                  ? 'bg-emerald-500/8 text-emerald-400 border-emerald-500/20'
+                  : 'bg-red-500/8 text-red-400 border-red-500/20'
+                }`}>
+                {card.chipColor === 'emerald'
+                  ? <TrendingUp className="h-3 w-3" />
+                  : <TrendingDown className="h-3 w-3" />
+                }
+                {card.chip}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* AI Insight Banner */}
+      <div className="relative rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5 overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-48 bg-gradient-to-l from-emerald-500/5 to-transparent" />
+        <div className="flex items-start gap-4">
+          <div className="rounded-xl bg-emerald-500/15 p-2.5 ring-1 ring-emerald-500/25 shrink-0">
+            <Sparkles className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-emerald-300">AI Pricing Recommendation</p>
+            <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+              Based on competitor analysis, your pricing is{' '}
+              <span className="text-emerald-400 font-semibold">5% below market average</span>. 
+              {' '}Raising prices by <span className="text-white font-semibold">$250</span> could increase monthly revenue by ~$3,000 with minimal churn risk.
+            </p>
+          </div>
+          <button className="shrink-0 flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all">
+            Apply <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Competitor Table */}
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 shadow-xl overflow-hidden">
+        <div className="border-b border-slate-800/60 px-6 py-4 flex items-center justify-between bg-slate-900/80">
+          <h2 className="text-sm font-semibold text-white">Competitor Landscape</h2>
+          <button className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 transition-colors">
+            Export <ExternalLink className="h-3 w-3" />
+          </button>
+        </div>
+
+        {filtered.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-800/50 bg-slate-950/40">
+                  {['Competitor', 'Niche', 'Avg Price', 'Change', 'Threat', 'Status', ''].map(h => (
+                    <th key={h} className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/40">
+                {filtered.map((c) => (
+                  <tr key={c.name} className="group hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center ring-1 ring-slate-700/60">
+                          <Globe className="h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{c.name}</p>
+                          <p className="text-[11px] text-slate-500">{c.website}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="rounded-lg bg-slate-800/70 px-2.5 py-1 text-xs font-medium text-slate-300 border border-slate-700/50">
+                        {c.niche}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-white">{c.price}</td>
+                    <td className="px-6 py-4">
+                      <span className={`flex items-center gap-1 text-sm font-semibold
+                        ${c.trend === 'up' ? 'text-emerald-400' : c.trend === 'down' ? 'text-red-400' : 'text-slate-400'}`}>
+                        {c.trend === 'up' ? <TrendingUp className="h-3.5 w-3.5" /> : c.trend === 'down' ? <TrendingDown className="h-3.5 w-3.5" /> : null}
+                        {c.change}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold border
+                        ${c.threat === 'High' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          c.threat === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-slate-700/50 text-slate-400 border-slate-700'}`}>
+                        {c.threat}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className={`flex items-center gap-1.5 text-[11px] font-semibold
+                        ${c.status === 'Active' ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${c.status === 'Active' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                        {c.status}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button className="rounded-lg p-1.5 text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-60 p-8">
+            <div className="rounded-2xl bg-slate-800/50 p-5 mb-4">
+              <Search className="h-7 w-7 text-slate-500" />
+            </div>
+            <h3 className="text-base font-semibold text-slate-300">
+              {search ? 'No matching competitors' : 'No competitors tracked yet'}
+            </h3>
+            <p className="text-sm text-slate-500 mt-1.5 text-center max-w-xs">
+              {search
+                ? 'Try a different search term'
+                : 'Run a web scrape to auto-discover and analyze your market.'}
+            </p>
+            {!search && (
+              <button className="mt-5 rounded-xl bg-emerald-500/10 px-6 py-2.5 text-sm font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/15 transition-all">
+                Run Initial Scrape
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

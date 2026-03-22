@@ -10,56 +10,13 @@ import {
   ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
-const MONTHLY_DATA = [
-  { month: 'Oct', revenue: 18400, expenses: 12200, profit: 6200 },
-  { month: 'Nov', revenue: 21000, expenses: 13500, profit: 7500 },
-  { month: 'Dec', revenue: 25800, expenses: 14200, profit: 11600 },
-  { month: 'Jan', revenue: 22100, expenses: 13800, profit: 8300 },
-  { month: 'Feb', revenue: 27300, expenses: 15000, profit: 12300 },
-  { month: 'Mar', revenue: 31500, expenses: 16200, profit: 15300 },
-];
-
-const REVENUE_STREAMS = [
-  { name: 'Core Product', monthly: 18400, growth: '+12%', trend: 'up', share: 58 },
-  { name: 'Consulting', monthly: 8200, growth: '+5%', trend: 'up', share: 26 },
-  { name: 'Maintenance', monthly: 3800, growth: '-2%', trend: 'down', share: 12 },
-  { name: 'Referrals', monthly: 1100, growth: '+3%', trend: 'up', share: 4 },
-];
-
-const KPI = [
-  {
-    label: 'Total Revenue',
-    value: '$31,500',
-    change: '+15.4%',
-    up: true,
-    icon: DollarSign,
-    sub: 'vs last month',
-  },
-  {
-    label: 'Net Profit',
-    value: '$15,300',
-    change: '+24.4%',
-    up: true,
-    icon: TrendingUp,
-    sub: 'vs last month',
-  },
-  {
-    label: 'Profit Margin',
-    value: '48.6%',
-    change: '+3.9pp',
-    up: true,
-    icon: BarChart3,
-    sub: 'vs last month',
-  },
-  {
-    label: 'Target Gap',
-    value: '-$700',
-    change: '95.4% there',
-    up: false,
-    icon: Target,
-    sub: '→ $16,000 goal',
-  },
-];
+import { useProfitSummary, useProfitEntries } from '@/hooks/useProfit';
+import { useDiscount } from '@/hooks/useDiscount';
+import { DiscountViabilityCard } from '@/components/dashboard/DiscountViabilityCard';
+import type { ProfitSummary } from '@/types/profit';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 type StreamType = {
   name: string;
@@ -87,15 +44,77 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function ProfitManagerPage() {
-  const [streams, setStreams] = useState<StreamType[]>(REVENUE_STREAMS);
+  const { summary } = useProfitSummary();
+  const { entries } = useProfitEntries();
+  const { checkViability, data: discountData, isLoading: discountLoading, error: discountError } = useDiscount();
+
   const [target, setTarget] = useState(16000);
   const [editingTarget, setEditingTarget] = useState(false);
   const [newTarget, setNewTarget] = useState('16000');
-  const currentProfit = 15300;
+
+  // Discount Simulator Form State
+  const [dForm, setDForm] = useState({ price: 100, fixed: 5000, variable: 20 });
+
+  const monthlyData = (summary || []).map((s: ProfitSummary) => ({
+    month: s.period,
+    revenue: s.total_revenue,
+    expenses: s.total_expenses,
+    profit: s.net_profit,
+  })).slice(-6); // Last 6 months
+
+  const latest = summary && summary.length > 0 ? summary[summary.length - 1] : { total_revenue: 0, net_profit: 0, profit_margin_pct: 0 };
+  const prev = summary && summary.length > 1 ? summary[summary.length - 2] : null;
+
+  const revChange = prev && prev.total_revenue ? ((latest.total_revenue - prev.total_revenue) / prev.total_revenue) * 100 : 0;
+  const profChange = prev && prev.net_profit ? ((latest.net_profit - prev.net_profit) / prev.net_profit) * 100 : 0;
+  const marginChange = prev ? latest.profit_margin_pct - prev.profit_margin_pct : 0;
+
+  const currentProfit = latest?.net_profit || 0;
   const progress = Math.min((currentProfit / target) * 100, 100);
 
-  const deleteStream = (name: string) => {
-    setStreams(prev => prev.filter(s => s.name !== name));
+  const dynamicKpi = [
+    {
+      label: 'Total Revenue',
+      value: `$${(latest.total_revenue || 0).toLocaleString()}`,
+      change: `${revChange > 0 ? '+' : ''}${revChange.toFixed(1)}%`,
+      up: revChange >= 0,
+      icon: DollarSign,
+      sub: 'vs last month',
+    },
+    {
+      label: 'Net Profit',
+      value: `$${(latest.net_profit || 0).toLocaleString()}`,
+      change: `${profChange > 0 ? '+' : ''}${profChange.toFixed(1)}%`,
+      up: profChange >= 0,
+      icon: TrendingUp,
+      sub: 'vs last month',
+    },
+    {
+      label: 'Profit Margin',
+      value: `${(latest.profit_margin_pct || 0).toFixed(1)}%`,
+      change: `${marginChange > 0 ? '+' : ''}${marginChange.toFixed(1)}pp`,
+      up: marginChange >= 0,
+      icon: BarChart3,
+      sub: 'vs last month',
+    },
+    {
+      label: 'Target Gap',
+      value: currentProfit >= target ? 'Achieved' : `-$${(target - currentProfit).toLocaleString()}`,
+      change: `${progress.toFixed(1)}% there`,
+      up: currentProfit >= target,
+      icon: Target,
+      sub: `→ $${target.toLocaleString()} goal`,
+    },
+  ];
+
+  const handleSimulate = (e: React.FormEvent) => {
+    e.preventDefault();
+    checkViability({
+      current_price: dForm.price,
+      fixed_costs: dForm.fixed,
+      variable_costs: dForm.variable,
+      target_profit: target
+    }).catch(err => console.error(err));
   };
 
   return (
@@ -120,7 +139,7 @@ export default function ProfitManagerPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {KPI.map((k) => {
+        {dynamicKpi.map((k) => {
           const Icon = k.icon;
           return (
             <div key={k.label} className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-5 hover:border-slate-700/80 transition-all group">
@@ -230,7 +249,7 @@ export default function ProfitManagerPage() {
         <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6">
           <h3 className="text-sm font-semibold text-white mb-5">Profit Trend (6M)</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={MONTHLY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <AreaChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
@@ -250,7 +269,7 @@ export default function ProfitManagerPage() {
         <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6">
           <h3 className="text-sm font-semibold text-white mb-5">Revenue vs Expenses (6M)</h3>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={MONTHLY_DATA} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barGap={4}>
+            <BarChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barGap={4}>
               <CartesianGrid stroke="rgba(71,85,105,0.2)" strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
@@ -262,51 +281,109 @@ export default function ProfitManagerPage() {
         </div>
       </div>
 
-      {/* Revenue Streams */}
+      {/* Discount Viability Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 p-6">
+           <h3 className="text-sm font-semibold text-white mb-1">Discount Viability Simulator</h3>
+           <p className="text-xs text-slate-500 mb-5">Check if 10%, 20%, or 30% discounts will destroy your margins.</p>
+           
+           <form onSubmit={handleSimulate} className="space-y-4">
+             <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1.5">
+                 <Label className="text-xs text-slate-400">Current Price</Label>
+                 <Input 
+                   type="number" 
+                   value={dForm.price} 
+                   onChange={e => setDForm(prev => ({...prev, price: Number(e.target.value)}))} 
+                   className="bg-slate-950/50 border-slate-800 text-sm" 
+                 />
+               </div>
+               <div className="space-y-1.5">
+                 <Label className="text-xs text-slate-400">Fixed Costs</Label>
+                 <Input 
+                   type="number" 
+                   value={dForm.fixed} 
+                   onChange={e => setDForm(prev => ({...prev, fixed: Number(e.target.value)}))} 
+                   className="bg-slate-950/50 border-slate-800 text-sm" 
+                 />
+               </div>
+               <div className="space-y-1.5">
+                 <Label className="text-xs text-slate-400">Variable Costs (Per Unit)</Label>
+                 <Input 
+                   type="number" 
+                   value={dForm.variable} 
+                   onChange={e => setDForm(prev => ({...prev, variable: Number(e.target.value)}))} 
+                   className="bg-slate-950/50 border-slate-800 text-sm" 
+                 />
+               </div>
+               <div className="space-y-1.5">
+                 <Label className="text-xs text-slate-400">Target Profit</Label>
+                 <Input 
+                   type="number" 
+                   value={target} 
+                   disabled
+                   className="bg-slate-900 border-slate-800 text-sm text-slate-500 opacity-70 cursor-not-allowed" 
+                 />
+               </div>
+             </div>
+             <Button type="submit" disabled={discountLoading} className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold">
+                {discountLoading ? "Calculating..." : "Run Viability Check"}
+             </Button>
+           </form>
+        </div>
+
+        <div>
+          <DiscountViabilityCard 
+            data={discountData} 
+            loading={discountLoading} 
+            error={discountError} 
+            currency="$"
+            className="h-full bg-slate-900/60 border-slate-800/70"
+          />
+        </div>
+      </div>
+
+      {/* Profit Entries */}
       <div className="rounded-2xl border border-slate-800/70 bg-slate-900/60 overflow-hidden">
         <div className="border-b border-slate-800/60 px-6 py-4 flex items-center justify-between bg-slate-900/80">
-          <h3 className="text-sm font-semibold text-white">Revenue Streams</h3>
+          <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
           <button className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/18 transition-all">
-            <Plus className="h-3.5 w-3.5" /> Add Stream
+            <Plus className="h-3.5 w-3.5" /> Record Entry
           </button>
         </div>
 
         <div className="divide-y divide-slate-800/40">
-          {streams.map((s) => (
-            <div key={s.name} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-800/25 transition-colors group">
+          {(entries || []).length > 0 ? (entries || []).slice(0, 5).map((s: any) => (
+            <div key={s.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-800/25 transition-colors group">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <p className="text-sm font-semibold text-white">{s.name}</p>
-                  <span className={`text-xs font-bold flex items-center gap-1 ${s.trend === 'up' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {s.trend === 'up' ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                    {s.growth}
+                <div className="flex items-center gap-3 mb-1">
+                  <p className="text-sm font-semibold text-white">{s.notes || s.entry_type}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.entry_type === 'REVENUE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                    {s.entry_type}
                   </span>
                 </div>
-                {/* Share bar */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-1.5 rounded-full bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-emerald-500/70"
-                      style={{ width: `${s.share}%` }}
-                    />
-                  </div>
-                  <span className="text-[11px] text-slate-500 w-8 text-right">{s.share}%</span>
-                </div>
+                <p className="text-[11px] text-slate-500">
+                  {new Date(s.entry_date).toLocaleDateString()}
+                </p>
               </div>
 
               <div className="text-right">
-                <p className="text-sm font-bold text-white">${s.monthly.toLocaleString()}</p>
-                <p className="text-[11px] text-slate-500">per month</p>
+                <p className={`text-sm font-bold ${s.entry_type === 'REVENUE' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  {s.entry_type === 'REVENUE' ? '+' : '-'}${s.amount.toLocaleString()}
+                </p>
               </div>
 
               <button
-                onClick={() => deleteStream(s.name)}
                 className="ml-2 rounded-lg p-1.5 text-slate-700 hover:text-red-400 hover:bg-red-500/8 transition-all opacity-0 group-hover:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
-          ))}
+          )) : (
+            <div className="px-6 py-8 text-center text-sm text-slate-500">
+               No profit entries yet. Add one above.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,90 +7,53 @@ import {
   Zap, Eye
 } from 'lucide-react';
 
-const COMPETITOR_DATA = [
-  {
-    name: 'Apex Solutions',
-    niche: 'SaaS',
-    price: '$4,800',
-    change: '+8%',
-    trend: 'up',
-    status: 'Active',
-    threat: 'High',
-    website: 'apex.io',
-  },
-  {
-    name: 'NovaTech Corp',
-    niche: 'SaaS',
-    price: '$3,950',
-    change: '-3%',
-    trend: 'down',
-    status: 'Active',
-    threat: 'Medium',
-    website: 'novatech.com',
-  },
-  {
-    name: 'Stratify Ltd',
-    niche: 'Consulting',
-    price: '$5,200',
-    change: '+12%',
-    trend: 'up',
-    status: 'Active',
-    threat: 'High',
-    website: 'stratify.co',
-  },
-  {
-    name: 'BluePath Agency',
-    niche: 'Marketing',
-    price: '$2,100',
-    change: '-1%',
-    trend: 'neutral',
-    status: 'Inactive',
-    threat: 'Low',
-    website: 'bluepath.agency',
-  },
-];
-
-const KPI_CARDS = [
-  {
-    label: 'Total Tracked',
-    value: '12',
-    chip: '+2 this week',
-    chipColor: 'emerald',
-    icon: Eye,
-    accent: 'from-emerald-500 to-teal-400',
-  },
-  {
-    label: 'Avg Market Price',
-    value: '$4,250',
-    chip: '−5% vs you',
-    chipColor: 'red',
-    icon: TrendingDown,
-    accent: 'from-slate-600 to-slate-500',
-  },
-  {
-    label: 'AI Opportunities',
-    value: '3',
-    chip: 'Niches detected',
-    chipColor: 'emerald',
-    icon: Zap,
-    accent: 'from-emerald-500 to-green-400',
-    gradient: true,
-  },
-];
+import { useCompetitors, useCompetitorSummary } from '@/hooks/useCompetitors';
 
 export default function DashboardPage() {
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const filtered = COMPETITOR_DATA.filter(c =>
+  const { competitors, isLoading, isError } = useCompetitors();
+  const { summary } = useCompetitorSummary();
+
+  const filtered = (competitors || []).filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.niche.toLowerCase().includes(search.toLowerCase())
+    (c.category || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    // You could mutate SWR here to actually refresh
     setTimeout(() => setIsRefreshing(false), 1500);
   };
+
+  const dynamicKpis = [
+    {
+      label: 'Total Tracked',
+      value: summary?.total_competitors?.toString() || '0',
+      chip: 'Active entries',
+      chipColor: 'emerald',
+      icon: Eye,
+      accent: 'from-emerald-500 to-teal-400',
+    },
+    {
+      label: 'Avg Rating',
+      value: summary?.average_rating ? summary.average_rating.toFixed(1) : 'N/A',
+      chip: 'Market ave',
+      chipColor: 'emerald',
+      icon: Sparkles,
+      accent: 'from-slate-600 to-slate-500',
+    },
+    {
+      label: 'Niches Detected',
+      value: summary?.categories?.length?.toString() || '0',
+      chip: 'Categories tracked',
+      chipColor: 'emerald',
+      icon: Zap,
+      accent: 'from-emerald-500 to-green-400',
+      gradient: true,
+    },
+  ];
 
   return (
     <div className="animate-in fade-in duration-500 space-y-8">
@@ -133,7 +96,7 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {KPI_CARDS.map((card) => {
+        {dynamicKpis.map((card) => {
           const Icon = card.icon;
           return (
             <div key={card.label} className="relative rounded-2xl border border-slate-800/80 bg-slate-900/60 p-6 overflow-hidden group hover:border-slate-700/80 transition-all duration-300">
@@ -205,7 +168,7 @@ export default function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-800/50 bg-slate-950/40">
-                  {['Competitor', 'Niche', 'Avg Price', 'Change', 'Threat', 'Status', ''].map(h => (
+                  {['Competitor', 'Category', 'Region', 'Rating', 'Added', ''].map(h => (
                     <th key={h} className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       {h}
                     </th>
@@ -214,7 +177,7 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-slate-800/40">
                 {filtered.map((c) => (
-                  <tr key={c.name} className="group hover:bg-slate-800/30 transition-colors">
+                  <tr key={c.id} className="group hover:bg-slate-800/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center ring-1 ring-slate-700/60">
@@ -222,37 +185,25 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-white">{c.name}</p>
-                          <p className="text-[11px] text-slate-500">{c.website}</p>
+                          <a href={c.website} target="_blank" rel="noreferrer" className="text-[11px] text-emerald-400 hover:underline">{c.website?.replace('https://', '') || 'No website'}</a>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="rounded-lg bg-slate-800/70 px-2.5 py-1 text-xs font-medium text-slate-300 border border-slate-700/50">
-                        {c.niche}
+                        {c.category || 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-white">{c.price}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-white">{c.region || 'Unknown'}</td>
                     <td className="px-6 py-4">
-                      <span className={`flex items-center gap-1 text-sm font-semibold
-                        ${c.trend === 'up' ? 'text-emerald-400' : c.trend === 'down' ? 'text-red-400' : 'text-slate-400'}`}>
-                        {c.trend === 'up' ? <TrendingUp className="h-3.5 w-3.5" /> : c.trend === 'down' ? <TrendingDown className="h-3.5 w-3.5" /> : null}
-                        {c.change}
+                      <span className="flex items-center gap-1 text-sm font-bold text-amber-400">
+                        {c.rating ? (
+                           <>{c.rating.toFixed(1)} <Sparkles className="h-3 w-3" /></>
+                        ) : 'N/A'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold border
-                        ${c.threat === 'High' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                          c.threat === 'Medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-slate-700/50 text-slate-400 border-slate-700'}`}>
-                        {c.threat}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className={`flex items-center gap-1.5 text-[11px] font-semibold
-                        ${c.status === 'Active' ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${c.status === 'Active' ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-                        {c.status}
-                      </div>
+                    <td className="px-6 py-4 text-xs text-slate-400">
+                      {new Date(c.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
                       <button className="rounded-lg p-1.5 text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-all opacity-0 group-hover:opacity-100">
